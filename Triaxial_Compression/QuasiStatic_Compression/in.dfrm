@@ -1,0 +1,34 @@
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix             1 all npt temp 300 300 1 x ${inl} ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+#variable srate equal 1e10
+#variable srate1 equal "-v_srate / 1.0e12"
+#fix             2 all deform 1 x scale 1 y scale 1 z delta ${dltn} ${dlt} units box remap x
+#fix             2 all deform 1 x delta ${dltn} ${dlt} y delta ${dltn} ${dlt} z delta ${dltn} ${dlt} units box remap x
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 20000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_dfrm.txt screen no
+
+# Display thermo
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 20000
+unfix 1
+unfix def1
+uncompute tm
+uncompute prs

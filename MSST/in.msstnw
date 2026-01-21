@@ -1,0 +1,75 @@
+units           metal
+dimension       3
+boundary        p    p    p
+atom_style      atomic
+variable qval equal 10
+variable tval equal 0.02
+variable shkvel equal 4 # shock velocity in Km/s #
+variable Up equal 10*${shkvel}  # shock velocity in Angstrom/ps#
+read_data data.sitrs.001
+pair_style      tersoff
+pair_coeff      * * Si.tersoff Si  
+mass * 28.0855
+
+compute mype all pe
+compute myke all ke
+compute mdtr all msd com yes
+compute mdtf all msd com no
+compute tm all temp/com
+compute prss all pressure tm
+compute msst_MSST_pe all pe 
+
+neighbor 2.0 bin
+neigh_modify delay 0 every 1 check yes
+
+reset_timestep 0
+timestep 0.001
+###########################################################
+#This section have written to do shock simulation by means# 
+#of Equilibrium Molecular Dynamics(EMD),which is under the#
+#framework of MSST.                                       #
+# "dhug", "dray", change of specific volume should be     #
+#monitored during the initiation. overfluctutaions of     #
+#"dray"                                                   #
+# and "dhug" possibly never come back. then check q and   #
+#tscale                                                   #
+###########################################################
+
+fix		msst all msst z ${Up} q ${qval} tscale ${tval} 
+#fix_modify msst temp tm press prss energy yes
+ 
+#########################################################
+# this is needed to make etotal equal the MSST conserved#
+#quantity                                               #
+######################################################### 
+
+variable dhug equal f_msst[1]
+variable dray equal f_msst[2]
+variable lgrvel equal f_msst[3]
+variable lgrpos equal f_msst[4]
+variable mystep equal "step"
+variable mypxx equal "pxx/10000"
+variable mypyy equal "pyy/10000"
+variable mypzz equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+#variable mytemp equal "c_msst_MSST_temp"
+#variable press equal " c_msst_MSST_press"
+variable mytemp equal "c_tm"
+variable press equal " c_prss"
+variable penrg equal "c_msst_MSST_pe"
+variable delE equal f_msst
+#variable ken equal "c_myke"
+#variable pen equal "c_mype"
+#variable enth equal "enthalpy"
+variable mdys equal "c_mdtr[4]"
+variable mdtn equal "c_mdtf[4]"
+variable dns equal "density"
+fix shock all print 20 "${mystep} ${mypxx} ${mypyy} ${mypzz} ${mylx} ${myly} ${mylz} ${mdys} ${mdtn} ${mytemp} ${penrg} ${dhug} ${dray} ${lgrvel} ${press} ${delE} ${dns}" append runmst.${qval}.${tval}.${Up}.comout screen no
+thermo 1000
+thermo_style custom step pxx pyy pzz lx ly lz temp c_msst_MSST_pe v_dhug v_dray v_lgrvel v_lgrpos press f_msst
+#Use cfg for Atomeye
+dump 1 all cfg 5000 dump.${Up}.si.*.cfg mass type xs ys zs ix iy iz 
+#restart 3000 restart.shkmst.${Up}
+run 80000

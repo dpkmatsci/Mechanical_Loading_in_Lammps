@@ -1,0 +1,67 @@
+# Input file for uniaxial compressive loading of single crystal Silicon
+
+# --------- INITIALIZATION ----------------------------
+units 		metal
+dimension	3
+boundary	p	p	p
+atom_style	atomic
+read_data data.sisw.011
+# ---------- FORCE FIELDS ------------------------------
+pair_style	sw
+pair_coeff	* * Si.sw Si
+mass * 28.0855
+# ------------- SETTINGS ---------------------------------
+compute mype all pe
+compute myke all ke
+compute mycn all cna/atom 2.8
+compute silic all basal/atom
+compute silic1 all reduce sum c_silic[1]
+compute silic2 all reduce sum c_silic[2]
+compute silic3 all reduce sum c_silic[3]
+
+# Store final cell length for strain calculations
+variable tmp equal "lz"
+variable L0 equal ${tmp}
+print "Initial Length, L0: ${L0}"
+
+######################################
+# DEFORMATION
+reset_timestep 0
+timestep 0.001
+fix		1 all npt temp 300 300 1 x 0 0 1 y 0 0 1 drag 0
+variable srate equal 1.0e10
+variable srate1 equal "-v_srate / 1.0e12"
+fix		2 all deform 1 z erate ${srate1} units box remap x
+
+# Output strain and stress info to file
+# for units metal, pressure is in [bars] = 100 [kPa] = 1/10000 #[GPa]
+# p2, p3, p4 are in GPa
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal c_myke
+variable pen equal c_mype
+variable enth equal "enthalpy"
+fix def1 all print 100 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth}" file Si_compress_011.txt screen no
+
+# Dump to cfg for Ovito post processing
+dump     5 all cfg 200 dump.siphsw.*.cfg mass type xs ys zs c_mycn
+dump  11 all custom 200 dump.*.file c_silic[1] c_silic[2] c_silic[3] 
+dump_modify     5 element Si
+# Display thermo
+thermo 	1000
+thermo_style	custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+restart 5000 restart.equil
+run		40000
+
+######################################
+# SIMULATION DONE
+print "All done"

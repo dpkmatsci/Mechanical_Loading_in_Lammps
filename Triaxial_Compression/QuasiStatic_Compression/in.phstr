@@ -1,0 +1,41 @@
+# Input file for uniaxial compressive loading of single crystal Silicon
+
+# --------- INITIALIZATION ----------------------------
+units 		metal
+dimension	3
+boundary	p	p	p
+atom_style	atomic
+#read_restart restart.rlx
+read_data data.Si.erht_alb
+write_dump all cfg dump.siphsw.0.cfg mass type xs ys zs modify element Si
+# ---------- FORCE FIELDS ------------------------------
+pair_style	tersoff
+pair_coeff	* * Si_erhart_albe.tersoff Si
+mass * 28.0855
+# ------------- SETTINGS ---------------------------------
+
+# Store final cell length for strain calculations
+variable tmp equal "lz"
+variable L0 equal ${tmp}
+#variable dlt equal -0.001*v_L0
+#variable dltn equal 0.001*v_L0
+print "Initial Length, L0: ${L0}"
+######################################
+# DEFORMATION
+variable i loop 150
+label looping
+variable inl equal (v_i-1)*10000
+variable fnl equal v_i*10000
+variable gh equal (v_i-1)*20000
+variable did equal (2*v_i-1)
+variable dd equal (2*v_i)
+variable diid equal v_i*20000
+include in.dfrm
+#if "${i} == 4" then quit
+include in.rlx
+next i
+jump in.phstr looping
+
+######################################
+# SIMULATION DONE
+print "All done"

@@ -1,0 +1,21 @@
+# to determine the xrd pattern of metals
+# don't use manual option it will confined the simulation domain to a very small region giving wrong xrd patterns
+# here it is to be noted that value of c1 c2 c3 determines the size of mesh for small systems 1 1 1 should give correct # results but for large systems it is very time consuming process hence it is better to use large values of c1 c2 & c3 
+# for si crystal with 10000000 atoms & crystal size of 50x50x500, three different values of c1 c2 c3 have been tested.
+# The value of [50 50 50], [25 25 25] and [10 10 10] had given correct answer with #time taken 9 min, 52 min & 13 hrs respectively.
+units metal
+dimension 3
+boundary p p p
+atom_modify map array
+variable dp equal 1
+read_data data.Si.erht_alb.12
+mass * 28.0855
+pair_style tersoff
+pair_coeff * * Si_erhart_albe.tersoff Si
+reset_timestep 0
+timestep 0.001
+compute 1 all xrd 1.541838 Si  2Theta 5 175  c ${dp} ${dp} ${dp} LP 1  echo
+fix 1 all ave/histo/weight 1 1 1 5 175 17000 c_1[1] c_1[2] mode vector file deg2th.${dp}.erht_alb.12.xrd
+thermo 100
+thermo_style custom step temp lx ly lz press
+run 0 

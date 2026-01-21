@@ -1,0 +1,961 @@
+LAMMPS (23 Jun 2022 - Update 2)
+# Input file for uniaxial compressive loading of single crystal Silicon
+
+# --------- INITIALIZATION ----------------------------
+units 		metal
+dimension	3
+boundary	p	p	p
+atom_style	atomic
+#read_restart restart.rlx
+read_data data.Si.erht_alb
+Reading data file ...
+  orthogonal box = (-0.047080545 -0.047080545 -0.047080545) to (54.357081 54.357081 54.357081)
+  3 by 4 by 4 MPI processor grid
+  reading atoms ...
+  8000 atoms
+  reading velocities ...
+  8000 velocities
+  read_data CPU = 0.170 seconds
+write_dump all cfg dump.siphsw.0.cfg mass type xs ys zs modify element Si
+WARNING: Calling write_dump before a full system init. (../write_dump.cpp:68)
+# ---------- FORCE FIELDS ------------------------------
+pair_style	tersoff
+pair_coeff	* * Si_erhart_albe.tersoff Si
+mass * 28.0855
+# ------------- SETTINGS ---------------------------------
+
+# Store final cell length for strain calculations
+variable tmp equal "lz"
+variable L0 equal ${tmp}
+variable L0 equal 54.4041610899817
+#variable dlt equal -0.001*v_L0
+#variable dltn equal 0.001*v_L0
+print "Initial Length, L0: ${L0}"
+Initial Length, L0: 54.4041610899817
+######################################
+# DEFORMATION
+variable i loop 5
+label looping
+variable inl equal (v_i-1)*10000
+variable fnl equal v_i*10000
+variable gh equal (v_i-1)*20000
+variable did equal (2*v_i-1)
+variable dd equal (2*v_i)
+variable diid equal v_i*20000
+include in.dfrm
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix             1 all npt temp 300 300 1 x ${inl} ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 0 ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 0 10000 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 0 10000 1 y 0 ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 0 10000 1 y 0 10000 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 0 10000 1 y 0 10000 1 z 0 ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 0 10000 1 y 0 10000 1 z 0 10000 1 drag 0
+#variable srate equal 1e10
+#variable srate1 equal "-v_srate / 1.0e12"
+#fix             2 all deform 1 x scale 1 y scale 1 z delta ${dltn} ${dlt} units box remap x
+#fix             2 all deform 1 x delta ${dltn} ${dlt} y delta ${dltn} ${dlt} z delta ${dltn} ${dlt} units box remap x
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 20000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_dfrm.txt screen no
+
+# Display thermo
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 5.05
+  ghost atom cutoff = 5.05
+  binsize = 2.525, bins = 22 22 22
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair tersoff, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.069 | 3.069 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   298.6364       54.404161      54.404161      54.404161      5.2241793e-16  0.0041270887  -0.0014873685  -0.0029790708   308.77568     -36676.911     -1.1311688      2.3169937    
+      1000   303.95163      54.385231      54.381763      54.383927      0.00037192409  0.10556015     0.10311918     0.10634754     314.27136     -36682.541      1050.0896      2.3196175    
+      2000   298.16916      54.356587      54.369922      54.360961      0.00079406349  0.22818591     0.19970197     0.22801511     308.29257     -36677.873      2186.3433      2.322326     
+      3000   297.91196      54.352679      54.315039      54.34435       0.0010993754   0.32267749     0.39416161     0.34466577     308.02663     -36681.482      3538.3496      2.3255504    
+      4000   300.68906      54.286128      54.353561      54.306314      0.0017985135   0.51543622     0.39063982     0.4855391      310.89802     -36685.783      4638.7171      2.3283808    
+      5000   301.0397       54.324559      54.280969      54.307497      0.001776776    0.50206399     0.57309623     0.52738105     311.26057     -36681.891      5341.8042      2.3297945    
+      6000   303.26145      54.270491      54.308628      54.289316      0.0021109654   0.65742971     0.58071943     0.61584435     313.55776     -36678.126      6179.9783      2.3317085    
+      7000   306.16448      54.3106        54.23664       54.278792      0.0023043994   0.62221096     0.76559624     0.68605773     316.55934     -36681.464      6912.8831      2.3335314    
+      8000   303.67263      54.226321      54.299631      54.261746      0.0026177223   0.8287817      0.70241022     0.77306461     313.98289     -36681.933      7680.8551      2.3351803    
+      9000   301.15516      54.258651      54.224775      54.241559      0.0029887749   0.84859842     0.9106678      0.87976325     311.37995     -36680.614      8796.7649      2.3378804    
+     10000   298.74326      54.207466      54.245561      54.225471      0.0032845001   0.99792468     0.93033831     0.95979388     308.88616     -36678.249      9626.8562      2.3398853    
+Loop time of 4.44335 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 194.448 ns/day, 0.123 hours/ns, 2250.555 timesteps/s
+99.7% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.8377     | 3.1543     | 3.3994     |   7.3 | 70.99
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.64941    | 0.88388    | 1.1988     |  14.0 | 19.89
+Output  | 0.00067266 | 0.00067765 | 0.00072196 |   0.0 |  0.02
+Modify  | 0.32239    | 0.35341    | 0.38462    |   3.3 |  7.95
+Other   |            | 0.05109    |            |       |  1.15
+
+Nlocal:        166.667 ave         180 max         152 min
+Histogram: 3 1 2 10 4 7 11 7 2 1
+Nghost:        592.938 ave         607 max         581 min
+Histogram: 3 2 8 8 4 13 3 2 2 3
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        5040 max        4256 min
+Histogram: 3 1 2 10 4 7 11 7 2 1
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+unfix 1
+unfix def1
+uncompute tm
+uncompute prs
+#if "${i} == 4" then quit
+include in.rlx
+#####################################################
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix eqb all npt temp 300 300 1 x ${fnl} ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 10000 ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 10000 10000 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 10000 10000 1 y 10000 ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 10000 10000 1 y 10000 10000 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 10000 10000 1 y 10000 10000 1 z 10000 ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 10000 10000 1 y 10000 10000 1 z 10000 10000 1 drag 0
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 2000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_rlx.txt screen no
+
+# Dump to cfg for Ovito post processing
+#dump     ${did} all cfg 20000 dump.siphsw.*.cfg mass type xs ys zs c_mycn
+#dump  ${dd} all custom 20000 dump.*.file c_silic[1] c_silic[2] c_silic[3]
+#dump_modify     ${did} element Si
+#write_dump all cfg dump.siphsw.${did}.cfg mass type xs ys zs modify element Si
+#write_dump all custom dump.${dd}.file c_silic[1] c_silic[2] c_silic[3] modify element Si
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.069 | 3.069 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   298.74326      54.207466      54.245561      54.225471      0.0032845001   0.99792468     0.93033831     0.95979388     308.88616     -36678.249      9626.8562      2.3398853    
+      1000   299.1961       54.262506      54.191064      54.230769      0.0031871089   0.89361657     1.0278802      0.94490786     309.35437     -36678.783      9554.6822      2.3396339    
+      2000   301.28187      54.17331       54.286146      54.225504      0.0032838952   1.0454902      0.8478242      0.95103076     311.51096     -36680.943      9481.1506      2.3396087    
+      3000   300.28865      54.261287      54.178143      54.222629      0.003336731    0.91452779     1.0738026      0.99055087     310.48402     -36679.742      9929.6043      2.3405959    
+      4000   300.29026      54.180486      54.252945      54.215894      0.0034605234   1.0857304      0.95342729     1.0232148      310.48569     -36679.682      10207.908      2.3411453    
+      5000   299.36595      54.266401      54.161302      54.213377      0.003506787    0.94898306     1.1338212      1.0358724      309.52999     -36678.378      10395.589      2.3415025    
+      6000   300.59879      54.150466      54.272324      54.212546      0.0035220756   1.1621415      0.93640034     1.0456466      310.80469     -36678.818      10480.628      2.3417514    
+      7000   300.62212      54.241822      54.194169      54.216573      0.0034480409   0.98206306     1.0570254      1.020076       310.82881     -36678.096      10197.215      2.3410048    
+      8000   301.30603      54.187714      54.24645       54.225241      0.003288717    1.05721        0.95240075     0.99275109     311.53594     -36678.254      10007.873      2.3407097    
+      9000   303.03605      54.275039      54.181239      54.214893      0.0034789243   0.88567858     1.0532822      0.99029273     313.32469     -36682.023      9764.1783      2.340203     
+     10000   295.30319      54.186492      54.252173      54.232826      0.0031493042   1.0482477      0.92244901     0.95818784     305.3293      -36678.49       9762.9483      2.3401883    
+Loop time of 4.55683 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 189.605 ns/day, 0.127 hours/ns, 2194.508 timesteps/s
+99.6% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.9962     | 3.3014     | 3.6644     |   7.4 | 72.45
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.45416    | 0.80227    | 1.1341     |  15.2 | 17.61
+Output  | 0.00060828 | 0.022585   | 0.023057   |   2.1 |  0.50
+Modify  | 0.3416     | 0.37716    | 0.42883    |   4.4 |  8.28
+Other   |            | 0.05346    |            |       |  1.17
+
+Nlocal:        166.667 ave         179 max         155 min
+Histogram: 3 0 10 5 5 10 5 5 3 2
+Nghost:        594.042 ave         603 max         581 min
+Histogram: 1 2 4 4 5 9 6 4 6 7
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        5012 max        4340 min
+Histogram: 3 0 10 5 5 10 5 5 3 2
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+write_restart restart.rlx
+System init for write_restart ...
+write_dump all cfg dump.siphsw.${diid}.cfg mass type xs ys zs modify element Si
+write_dump all cfg dump.siphsw.20000.cfg mass type xs ys zs modify element Si
+#print "${diid} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth}" append Si_phstr.txt screen no
+unfix def1
+unfix eqb
+uncompute tm
+uncompute prs
+####################################################################################
+next i
+jump in.phstr looping
+variable inl equal (v_i-1)*10000
+variable fnl equal v_i*10000
+variable gh equal (v_i-1)*20000
+variable did equal (2*v_i-1)
+variable dd equal (2*v_i)
+variable diid equal v_i*20000
+include in.dfrm
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix             1 all npt temp 300 300 1 x ${inl} ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 10000 ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 10000 20000 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 10000 20000 1 y 10000 ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 10000 20000 1 y 10000 20000 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 10000 20000 1 y 10000 20000 1 z 10000 ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 10000 20000 1 y 10000 20000 1 z 10000 20000 1 drag 0
+#variable srate equal 1e10
+#variable srate1 equal "-v_srate / 1.0e12"
+#fix             2 all deform 1 x scale 1 y scale 1 z delta ${dltn} ${dlt} units box remap x
+#fix             2 all deform 1 x delta ${dltn} ${dlt} y delta ${dltn} ${dlt} z delta ${dltn} ${dlt} units box remap x
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 20000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_dfrm.txt screen no
+
+# Display thermo
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.07 | 3.073 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   295.30319      54.186492      54.252173      54.232826      0.0031493042   1.0482477      0.92244901     0.95818784     305.3293      -36678.49       9762.9483      2.3401883    
+      1000   299.07954      54.259898      54.168963      54.196328      0.0038201646   0.97951319     1.1427923      1.0902073      309.23386     -36679.465      10708.376      2.3421885    
+      2000   303.95904      54.123083      54.246691      54.213133      0.0035112857   1.2829452      1.0529637      1.1114469      314.27903     -36677.371      11491.186      2.3440179    
+      3000   307.47601      54.19402       54.151814      54.165235      0.0043916968   1.2386935      1.3276739      1.3044109      317.9154      -36677.199      12902.594      2.3471249    
+      4000   301.85697      54.123407      54.16747       54.154048      0.0045973212   1.4636864      1.38093        1.4004778      312.10559     -36674.543      14150.314      2.3499932    
+      5000   297.82076      54.166198      54.095711      54.115959      0.0052974182   1.4603373      1.5979093      1.5539071      307.93234     -36671.051      15373.846      2.3529064    
+      6000   298.32076      54.060807      54.142159      54.12644       0.0051047829   1.7123211      1.5679401      1.6066645      308.44931     -36672.695      16289.752      2.3550148    
+      7000   296.34814      54.129072      54.080735      54.088121      0.0058091184   1.6296643      1.7070865      1.6949602      306.40972     -36672.903      16772.37       2.3563845    
+      8000   298.78001      54.060993      54.094239      54.09017       0.0057714471   1.8267289      1.7565374      1.7730493      308.92416     -36675.616      17854.385      2.3586735    
+      9000   300.12376      54.093491      54.039648      54.046718      0.0065701448   1.845043       1.945792       1.9274321      310.31353     -36673.341      19060.891      2.3615349    
+     10000   301.7728       54.023918      54.045612      54.050732      0.0064963604   2.0638158      2.0289025      2.01059        312.01856     -36666.807      20344.361      2.3641395    
+Loop time of 4.71391 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 183.287 ns/day, 0.131 hours/ns, 2121.380 timesteps/s
+99.5% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 3.04       | 3.3133     | 3.5584     |   6.6 | 70.29
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.59739    | 0.8448     | 1.1053     |  13.1 | 17.92
+Output  | 0.00061477 | 0.00062085 | 0.00066948 |   0.0 |  0.01
+Modify  | 0.45255    | 0.49147    | 0.52381    |   2.6 | 10.43
+Other   |            | 0.06369    |            |       |  1.35
+
+Nlocal:        166.667 ave         180 max         154 min
+Histogram: 1 4 5 6 6 11 6 6 2 1
+Nghost:            594 ave         604 max         580 min
+Histogram: 2 0 5 3 4 11 8 8 2 5
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        5040 max        4312 min
+Histogram: 1 4 5 6 6 11 6 6 2 1
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+unfix 1
+unfix def1
+uncompute tm
+uncompute prs
+#if "${i} == 4" then quit
+include in.rlx
+#####################################################
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix eqb all npt temp 300 300 1 x ${fnl} ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 20000 ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 20000 20000 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 20000 20000 1 y 20000 ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 20000 20000 1 y 20000 20000 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 20000 20000 1 y 20000 20000 1 z 20000 ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 20000 20000 1 y 20000 20000 1 z 20000 20000 1 drag 0
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 2000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_rlx.txt screen no
+
+# Dump to cfg for Ovito post processing
+#dump     ${did} all cfg 20000 dump.siphsw.*.cfg mass type xs ys zs c_mycn
+#dump  ${dd} all custom 20000 dump.*.file c_silic[1] c_silic[2] c_silic[3]
+#dump_modify     ${did} element Si
+#write_dump all cfg dump.siphsw.${did}.cfg mass type xs ys zs modify element Si
+#write_dump all custom dump.${dd}.file c_silic[1] c_silic[2] c_silic[3] modify element Si
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.07 | 3.073 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   301.7728       54.023918      54.045612      54.050732      0.0064963604   2.0638158      2.0289025      2.01059        312.01856     -36666.807      20344.361      2.3641395    
+      1000   302.22766      54.067222      54.030552      54.023358      0.0069995161   1.9697216      2.0507665      2.0562622      312.48886     -36669.92       20255.835      2.3641018    
+      2000   296.13134      54.001801      54.065096      54.080073      0.0059570481   2.065441       1.9396195      1.9071755      306.18556     -36670.801      19707.453      2.3629727    
+      3000   293.8115       54.097763      54.043717      54.03019       0.0068739345   1.8409847      1.9400207      1.9568917      303.78696     -36670.072      19126.324      2.3618929    
+      4000   298.14556      54.024559      54.054822      54.06399       0.0062526759   2.017822       1.9576812      1.941206       308.26817     -36671.348      19722.364      2.3631291    
+      5000   300.1278       54.057928      54.031576      54.020817      0.0070462306   2.0087823      2.053728       2.0701561      310.31771     -36669.295      20442.221      2.3645746    
+      6000   305.41864      53.992742      54.032053      54.055746      0.0064041969   2.1571067      2.0959692      2.0470083      315.78818     -36671.531      21000.281      2.3658788    
+      7000   302.27711      54.055369      54.045946      54.034613      0.0067926358   1.9772401      2.0015755      2.0119499      312.54        -36669.559      19969.218      2.3634542    
+      8000   303.01837      54.046818      54.049877      54.060005      0.0063259213   1.9688078      1.954585       1.934532       313.30642     -36673.506      19526.416      2.3625461    
+      9000   296.54757      54.04769       54.055975      54.043519      0.0066289457   1.975392       1.9574978      1.984521       306.61592     -36670.833      19724.703      2.362962     
+     10000   298.68502      54.042739      54.02333       54.038013      0.0067301455   2.032639       2.0699358      2.0350873      308.82594     -36672.845      20458.874      2.3648474    
+Loop time of 4.6449 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 186.010 ns/day, 0.129 hours/ns, 2152.897 timesteps/s
+99.5% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.9849     | 3.3085     | 3.6568     |   6.9 | 71.23
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.44405    | 0.78147    | 1.114      |  14.4 | 16.82
+Output  | 0.00058297 | 0.00059922 | 0.00060244 |   0.0 |  0.01
+Modify  | 0.44548    | 0.4894     | 0.55656    |   4.1 | 10.54
+Other   |            | 0.06495    |            |       |  1.40
+
+Nlocal:        166.667 ave         180 max         153 min
+Histogram: 1 2 2 7 11 11 6 7 0 1
+Nghost:        595.062 ave         605 max         583 min
+Histogram: 1 1 3 3 7 16 8 4 2 3
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        5040 max        4284 min
+Histogram: 1 2 2 7 11 11 6 7 0 1
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+write_restart restart.rlx
+System init for write_restart ...
+write_dump all cfg dump.siphsw.${diid}.cfg mass type xs ys zs modify element Si
+write_dump all cfg dump.siphsw.40000.cfg mass type xs ys zs modify element Si
+#print "${diid} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth}" append Si_phstr.txt screen no
+unfix def1
+unfix eqb
+uncompute tm
+uncompute prs
+####################################################################################
+next i
+jump in.phstr looping
+variable inl equal (v_i-1)*10000
+variable fnl equal v_i*10000
+variable gh equal (v_i-1)*20000
+variable did equal (2*v_i-1)
+variable dd equal (2*v_i)
+variable diid equal v_i*20000
+include in.dfrm
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix             1 all npt temp 300 300 1 x ${inl} ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 20000 ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 20000 30000 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 20000 30000 1 y 20000 ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 20000 30000 1 y 20000 30000 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 20000 30000 1 y 20000 30000 1 z 20000 ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 20000 30000 1 y 20000 30000 1 z 20000 30000 1 drag 0
+#variable srate equal 1e10
+#variable srate1 equal "-v_srate / 1.0e12"
+#fix             2 all deform 1 x scale 1 y scale 1 z delta ${dltn} ${dlt} units box remap x
+#fix             2 all deform 1 x delta ${dltn} ${dlt} y delta ${dltn} ${dlt} z delta ${dltn} ${dlt} units box remap x
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 20000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_dfrm.txt screen no
+
+# Display thermo
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.07 | 3.073 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   298.68502      54.042739      54.02333       54.038013      0.0067301455   2.032639       2.0699358      2.0350873      308.82594     -36672.845      20458.874      2.3648474    
+      1000   298.35624      54.00282       54.041046      54.010192      0.0072415339   2.1824427      2.1093485      2.1659052      308.486       -36668.067      21525.655      2.3670384    
+      2000   296.59386      54.044608      53.997105      54.037197      0.0067451535   2.0765845      2.1642007      2.0892815      306.66378     -36661.01       21100.222      2.3659499    
+      3000   301.54488      53.996855      54.032846      54.001775      0.0073962422   2.2359107      2.1580348      2.2080117      311.7829      -36663.331      22006.524      2.3680282    
+      4000   302.58804      53.980493      53.958246      53.978345      0.0078268991   2.4081884      2.4576496      2.4185205      312.86148     -36662.171      24281.195      2.3730504    
+      5000   301.05338      53.933399      53.952502      53.933042      0.0086596158   2.6282323      2.5944928      2.6396497      311.27472     -36659.321      26207.916      2.3773707    
+      6000   296.04816      53.945804      53.931359      53.950712      0.0083348328   2.598532       2.6266398      2.5842219      306.09955     -36658.06       26031.312      2.3769771    
+      7000   297.19799      53.94009       53.937817      53.935267      0.0086187125   2.6248702      2.6256294      2.6379695      307.28843     -36660.757      26294.897      2.3776249    
+      8000   298.92422      53.906894      53.913683      53.90874       0.00910631     2.7971631      2.7905636      2.7993596      309.07326     -36658.892      27956.954      2.3813252    
+      9000   301.676        53.877609      53.854929      53.869758      0.0098228302   3.0379976      3.0818141      3.0571202      311.91847     -36651.705      30589.773      2.386945     
+     10000   303.91354      53.871392      53.895687      53.877978      0.0096717458   2.9922333      2.9446968      2.9708141      314.23199     -36652.626      29692.481      2.3850512    
+Loop time of 4.64406 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 186.044 ns/day, 0.129 hours/ns, 2153.290 timesteps/s
+99.5% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 3.085      | 3.3096     | 3.6173     |   7.3 | 71.26
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.49025    | 0.79564    | 1.0248     |  14.5 | 17.13
+Output  | 0.00066631 | 0.00067183 | 0.00071438 |   0.0 |  0.01
+Modify  | 0.45224    | 0.47774    | 0.50796    |   1.9 | 10.29
+Other   |            | 0.06043    |            |       |  1.30
+
+Nlocal:        166.667 ave         176 max         154 min
+Histogram: 1 2 2 8 7 7 6 5 3 7
+Nghost:        594.042 ave         603 max         582 min
+Histogram: 1 3 2 6 4 9 6 6 7 4
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        4928 max        4312 min
+Histogram: 1 2 2 8 7 7 6 5 3 7
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+unfix 1
+unfix def1
+uncompute tm
+uncompute prs
+#if "${i} == 4" then quit
+include in.rlx
+#####################################################
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix eqb all npt temp 300 300 1 x ${fnl} ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 30000 ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 30000 30000 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 30000 30000 1 y 30000 ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 30000 30000 1 y 30000 30000 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 30000 30000 1 y 30000 30000 1 z 30000 ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 30000 30000 1 y 30000 30000 1 z 30000 30000 1 drag 0
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 2000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_rlx.txt screen no
+
+# Dump to cfg for Ovito post processing
+#dump     ${did} all cfg 20000 dump.siphsw.*.cfg mass type xs ys zs c_mycn
+#dump  ${dd} all custom 20000 dump.*.file c_silic[1] c_silic[2] c_silic[3]
+#dump_modify     ${did} element Si
+#write_dump all cfg dump.siphsw.${did}.cfg mass type xs ys zs modify element Si
+#write_dump all custom dump.${dd}.file c_silic[1] c_silic[2] c_silic[3] modify element Si
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.07 | 3.073 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   303.91354      53.871392      53.895687      53.877978      0.0096717458   2.9922333      2.9446968      2.9708141      314.23199     -36652.626      29692.481      2.3850512    
+      1000   301.78604      53.88827       53.84936       53.881816      0.0096012035   2.9960385      3.0649762      3.0051301      312.03225     -36651.73       30220.483      2.3861855    
+      2000   299.57629      53.845971      53.909261      53.856482      0.010066864    3.0663755      2.9574453      3.0491214      309.74748     -36655.222      30243.141      2.3865286    
+      3000   300.21654      53.906429      53.853309      53.896879      0.0093243168   2.8942637      2.9933913      2.9187598      310.40946     -36658.969      29354.716      2.3845401    
+      4000   297.63902      53.867105      53.89068       53.870022      0.0098179903   3.0176103      2.9746118      3.0222593      307.74443     -36652.541      30048.271      2.385815     
+      5000   304.08356      53.875307      53.866545      53.87205       0.0097806989   3.0196614      3.0333089      3.022888       314.40778     -36655.569      30252.861      2.3864307    
+      6000   302.88762      53.884617      53.873674      53.88836       0.0094809071   2.9605708      2.988612       2.9543332      313.17123     -36654.019      29678.387      2.3849806    
+      7000   302.3175       53.872904      53.895512      53.875933      0.0097093344   2.9847233      2.9426634      2.9827641      312.58175     -36652.262      29700.503      2.3850825    
+      8000   300.64733      53.886179      53.852059      53.877476      0.0096809726   2.9968814      3.0563735      3.0256255      310.85487     -36650.969      30262.935      2.3863507    
+      9000   297.77569      53.84606       53.91266       53.862447      0.0099572169   3.066279       2.934345       3.0322989      307.88574     -36652.896      30109.743      2.3861098    
+     10000   294.50232      53.919826      53.834098      53.900769      0.0092528171   2.8770068      3.0324293      2.9243081      304.50124     -36653.375      29445.814      2.3846262    
+Loop time of 4.49446 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 192.237 ns/day, 0.125 hours/ns, 2224.962 timesteps/s
+99.6% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.9707     | 3.3102     | 3.557      |   7.5 | 73.65
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.53978    | 0.77714    | 1.1002     |  15.2 | 17.29
+Output  | 0.00061606 | 0.0016545  | 0.0016827  |   0.4 |  0.04
+Modify  | 0.33087    | 0.35029    | 0.37566    |   2.2 |  7.79
+Other   |            | 0.05519    |            |       |  1.23
+
+Nlocal:        166.667 ave         176 max         153 min
+Histogram: 1 1 2 6 4 9 10 8 1 6
+Nghost:        595.125 ave         604 max         585 min
+Histogram: 1 0 8 5 8 8 5 9 2 2
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        4928 max        4284 min
+Histogram: 1 1 2 6 4 9 10 8 1 6
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+write_restart restart.rlx
+System init for write_restart ...
+write_dump all cfg dump.siphsw.${diid}.cfg mass type xs ys zs modify element Si
+write_dump all cfg dump.siphsw.60000.cfg mass type xs ys zs modify element Si
+#print "${diid} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth}" append Si_phstr.txt screen no
+unfix def1
+unfix eqb
+uncompute tm
+uncompute prs
+####################################################################################
+next i
+jump in.phstr looping
+variable inl equal (v_i-1)*10000
+variable fnl equal v_i*10000
+variable gh equal (v_i-1)*20000
+variable did equal (2*v_i-1)
+variable dd equal (2*v_i)
+variable diid equal v_i*20000
+include in.dfrm
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix             1 all npt temp 300 300 1 x ${inl} ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 30000 ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 30000 40000 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 30000 40000 1 y 30000 ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 30000 40000 1 y 30000 40000 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 30000 40000 1 y 30000 40000 1 z 30000 ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 30000 40000 1 y 30000 40000 1 z 30000 40000 1 drag 0
+#variable srate equal 1e10
+#variable srate1 equal "-v_srate / 1.0e12"
+#fix             2 all deform 1 x scale 1 y scale 1 z delta ${dltn} ${dlt} units box remap x
+#fix             2 all deform 1 x delta ${dltn} ${dlt} y delta ${dltn} ${dlt} z delta ${dltn} ${dlt} units box remap x
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 20000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_dfrm.txt screen no
+
+# Display thermo
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.07 | 3.073 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   294.50232      53.919826      53.834098      53.900769      0.0092528171   2.8770068      3.0324293      2.9243081      304.50124     -36653.375      29445.814      2.3846262    
+      1000   298.26457      53.824363      53.905874      53.843558      0.010304421    3.1691002      3.0197049      3.1406292      308.39122     -36650.375      31098.114      2.3882097    
+      2000   305.68539      53.860276      53.801559      53.849819      0.010189339    3.2016248      3.3173085      3.2258882      316.06399     -36648.28       32482.738      2.3909667    
+      3000   303.79504      53.815675      53.860265      53.824505      0.010654626    3.2992117      3.2174078      3.287448       314.10946     -36644.697      32680.225      2.3914642    
+      4000   302.71197      53.842774      53.78518       53.82821       0.01058652     3.3163767      3.4192394      3.338033       312.98962     -36643.498      33578.83       2.3934326    
+      5000   302.75559      53.773792      53.798304      53.78154       0.011444358    3.5938482      3.5414145      3.5773536      313.03472     -36640.418      35708.721      2.3979975    
+      6000   301.01155      53.783872      53.780759      53.781099      0.011452474    3.5780368      3.583791       3.5773679      311.23147     -36641.476      35797.319      2.3983499    
+      7000   296.63403      53.775726      53.75561       53.776107      0.011544226    3.6453218      3.6939951      3.6575623      306.70532     -36636.512      36656.264      2.4000582    
+      8000   299.8919       53.699154      53.77027       53.714657      0.012673734    3.969603       3.8390505      3.9433972      310.0738      -36631.897      39173.502      2.4055741    
+      9000   298.56553      53.755855      53.713197      53.742655      0.012159106    3.8399778      3.9074962      3.8530754      308.7024      -36629.605      38668.498      2.4043368    
+     10000   303.95165      53.690788      53.752695      53.711705      0.012727998    4.0453236      3.9263078      3.989586       314.27139     -36627.51       39870.725      2.4068679    
+Loop time of 4.44346 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 194.443 ns/day, 0.123 hours/ns, 2250.499 timesteps/s
+99.6% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 3.015      | 3.3052     | 3.5619     |   7.1 | 74.38
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.49315    | 0.73228    | 1.0349     |  14.8 | 16.48
+Output  | 0.00059826 | 0.00060435 | 0.00065005 |   0.0 |  0.01
+Modify  | 0.33291    | 0.35134    | 0.38314    |   2.5 |  7.91
+Other   |            | 0.05406    |            |       |  1.22
+
+Nlocal:        166.667 ave         181 max         157 min
+Histogram: 3 8 7 5 4 12 6 1 1 1
+Nghost:        594.708 ave         603 max         583 min
+Histogram: 1 2 4 1 3 9 10 9 6 3
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        5068 max        4396 min
+Histogram: 3 8 7 5 4 12 6 1 1 1
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+unfix 1
+unfix def1
+uncompute tm
+uncompute prs
+#if "${i} == 4" then quit
+include in.rlx
+#####################################################
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix eqb all npt temp 300 300 1 x ${fnl} ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 40000 ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 40000 40000 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 40000 40000 1 y 40000 ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 40000 40000 1 y 40000 40000 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 40000 40000 1 y 40000 40000 1 z 40000 ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 40000 40000 1 y 40000 40000 1 z 40000 40000 1 drag 0
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 2000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_rlx.txt screen no
+
+# Dump to cfg for Ovito post processing
+#dump     ${did} all cfg 20000 dump.siphsw.*.cfg mass type xs ys zs c_mycn
+#dump  ${dd} all custom 20000 dump.*.file c_silic[1] c_silic[2] c_silic[3]
+#dump_modify     ${did} element Si
+#write_dump all cfg dump.siphsw.${did}.cfg mass type xs ys zs modify element Si
+#write_dump all custom dump.${dd}.file c_silic[1] c_silic[2] c_silic[3] modify element Si
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.07 | 3.073 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   303.95165      53.690788      53.752695      53.711705      0.012727998    4.0453236      3.9263078      3.989586       314.27139     -36627.51       39870.725      2.4068679    
+      1000   299.4329       53.749953      53.667617      53.724332      0.012495902    3.9359434      4.1046849      3.97992        309.59921     -36624.311      40068.494      2.4074639    
+      2000   298.65218      53.667719      53.774603      53.704986      0.0128515      4.0854551      3.8872098      4.0098434      308.79199     -36630.227      39941.694      2.4072226    
+      3000   294.5124       53.738247      53.689571      53.718392      0.012605092    3.9649594      4.0476912      3.9915033      304.51166     -36626.977      40013.847      2.4072698    
+      4000   295.89863      53.702533      53.726243      53.713838      0.012688798    4.0294377      3.978832       4.005877       305.94495     -36625.896      40047.156      2.4074306    
+      5000   297.45935      53.714542      53.716949      53.711956      0.012723385    4.0028955      3.9927481      4.0073755      307.55866     -36624.661      40010.064      2.4073932    
+      6000   302.89894      53.735426      53.698923      53.72354       0.012510453    3.9476555      4.0115442      3.9692725      313.18293     -36629.125      39761.574      2.4067463    
+      7000   299.58222      53.696679      53.732853      53.708375      0.012789202    4.0544837      3.9896889      4.027407       309.7536      -36623.482      40238.599      2.4076417    
+      8000   301.865        53.729515      53.696813      53.718117      0.012610132    3.9810494      4.0340663      3.993096       312.11389     -36629.09       40027.372      2.4073486    
+      9000   296.09874      53.670939      53.778444      53.707243      0.012810012    4.0648286      3.8650147      3.9990022      306.15185     -36628.386      39762.818      2.4068051    
+     10000   296.01545      53.756365      53.652486      53.725618      0.012472265    3.9428644      4.1352281      3.9869511      306.06574     -36627.362      40216.812      2.4077979    
+Loop time of 4.53486 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 190.524 ns/day, 0.126 hours/ns, 2205.139 timesteps/s
+99.6% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.9625     | 3.3083     | 3.6199     |   7.6 | 72.95
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.522      | 0.80673    | 1.0927     |  15.1 | 17.79
+Output  | 0.0005926  | 0.00059764 | 0.00070263 |   0.0 |  0.01
+Modify  | 0.32667    | 0.36389    | 0.43747    |   5.5 |  8.02
+Other   |            | 0.05539    |            |       |  1.22
+
+Nlocal:        166.667 ave         177 max         151 min
+Histogram: 1 1 3 1 6 8 12 7 6 3
+Nghost:          595.5 ave         606 max         585 min
+Histogram: 2 5 3 4 9 9 7 4 2 3
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        4956 max        4228 min
+Histogram: 1 1 3 1 6 8 12 7 6 3
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+write_restart restart.rlx
+System init for write_restart ...
+write_dump all cfg dump.siphsw.${diid}.cfg mass type xs ys zs modify element Si
+write_dump all cfg dump.siphsw.80000.cfg mass type xs ys zs modify element Si
+#print "${diid} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth}" append Si_phstr.txt screen no
+unfix def1
+unfix eqb
+uncompute tm
+uncompute prs
+####################################################################################
+next i
+jump in.phstr looping
+variable inl equal (v_i-1)*10000
+variable fnl equal v_i*10000
+variable gh equal (v_i-1)*20000
+variable did equal (2*v_i-1)
+variable dd equal (2*v_i)
+variable diid equal v_i*20000
+include in.dfrm
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix             1 all npt temp 300 300 1 x ${inl} ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 40000 ${fnl} 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 40000 50000 1 y ${inl} ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 40000 50000 1 y 40000 ${fnl} 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 40000 50000 1 y 40000 50000 1 z ${inl} ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 40000 50000 1 y 40000 50000 1 z 40000 ${fnl} 1 drag 0
+fix             1 all npt temp 300 300 1 x 40000 50000 1 y 40000 50000 1 z 40000 50000 1 drag 0
+#variable srate equal 1e10
+#variable srate1 equal "-v_srate / 1.0e12"
+#fix             2 all deform 1 x scale 1 y scale 1 z delta ${dltn} ${dlt} units box remap x
+#fix             2 all deform 1 x delta ${dltn} ${dlt} y delta ${dltn} ${dlt} z delta ${dltn} ${dlt} units box remap x
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 20000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_dfrm.txt screen no
+
+# Display thermo
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.07 | 3.073 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   296.01545      53.756365      53.652486      53.725618      0.012472265    3.9428644      4.1352281      3.9869511      306.06574     -36627.362      40216.812      2.4077979    
+      1000   298.39487      53.666593      53.750506      53.689809      0.013130471    4.141765       3.9842582      4.110193       308.52594     -36625.339      40787.388      2.4090331    
+      2000   306.7085       53.704321      53.652489      53.688194      0.013160158    4.1742804      4.2678022      4.2115093      317.12184     -36623.158      42178.639      2.4118112    
+      3000   303.33797      53.654273      53.689217      53.666472      0.013559416    4.3247189      4.2565065      4.3094879      313.63687     -36616.108      42969.044      2.4133859    
+      4000   295.75404      53.665339      53.633285      53.657631      0.01372193     4.4004252      4.4432806      4.4032269      305.79545     -36606.591      44156.442      2.4158025    
+      5000   298.41848      53.638699      53.629763      53.635493      0.014128845    4.5144771      4.5298287      4.5226036      308.55036     -36608.425      45223.031      2.4181588    
+      6000   299.58845      53.609518      53.635287      53.621092      0.014393545    4.6242413      4.5729369      4.5956049      309.76005     -36609.761      45975.944      2.4198756    
+      7000   298.26739      53.631756      53.576725      53.608906      0.014617535    4.656149       4.7571863      4.7090364      308.39413     -36606.24       47074.572      2.4220666    
+      8000   299.59823      53.547458      53.643758      53.583729      0.015080327    4.873175       4.688134       4.8146032      309.77016     -36604.518      47919.708      2.4239866    
+      9000   297.53139      53.614293      53.526221      53.585255      0.015052271    4.8329183      4.9937685      4.8905889      307.63315     -36595.618      49057.586      2.426212     
+     10000   302.07928      53.526526      53.611642      53.551948      0.01566448     5.0630854      4.8987867      5.0039963      312.33544     -36593.55       49886.228      2.4278272    
+Loop time of 4.94658 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 174.666 ns/day, 0.137 hours/ns, 2021.597 timesteps/s
+99.4% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.8525     | 3.3092     | 3.5137     |   8.3 | 66.90
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.65704    | 0.89828    | 1.3372     |  16.3 | 18.16
+Output  | 0.00060983 | 0.00061579 | 0.0007276  |   0.0 |  0.01
+Modify  | 0.59995    | 0.64274    | 0.67558    |   2.1 | 12.99
+Other   |            | 0.09574    |            |       |  1.94
+
+Nlocal:        166.667 ave         177 max         149 min
+Histogram: 1 0 3 5 3 8 4 11 9 4
+Nghost:        595.333 ave         610 max         582 min
+Histogram: 2 2 4 9 9 7 8 4 1 2
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        4956 max        4172 min
+Histogram: 1 0 3 5 3 8 4 11 9 4
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+unfix 1
+unfix def1
+uncompute tm
+uncompute prs
+#if "${i} == 4" then quit
+include in.rlx
+#####################################################
+compute tm all temp/com
+compute prs all pressure tm
+reset_timestep 0
+timestep 0.001
+fix eqb all npt temp 300 300 1 x ${fnl} ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 50000 ${fnl} 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 50000 50000 1 y ${fnl} ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 50000 50000 1 y 50000 ${fnl} 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 50000 50000 1 y 50000 50000 1 z ${fnl} ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 50000 50000 1 y 50000 50000 1 z 50000 ${fnl} 1 drag 0
+fix eqb all npt temp 300 300 1 x 50000 50000 1 y 50000 50000 1 z 50000 50000 1 drag 0
+variable myst equal "step"
+variable strain equal "(v_L0-lz)/v_L0"
+variable p1 equal "v_strain"
+variable p2 equal "pxx/10000"
+variable p3 equal "pyy/10000"
+variable p4 equal "pzz/10000"
+variable mylx equal "lx"
+variable myly equal "ly"
+variable mylz equal "lz"
+variable tmpo equal "temp"
+variable dens equal "density"
+variable ken equal "ke"
+variable pen equal "pe"
+variable enth equal "enthalpy"
+variable prss equal c_prs
+fix def1 all print 2000 "${myst} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth} ${prss}" append Si_rlx.txt screen no
+
+# Dump to cfg for Ovito post processing
+#dump     ${did} all cfg 20000 dump.siphsw.*.cfg mass type xs ys zs c_mycn
+#dump  ${dd} all custom 20000 dump.*.file c_silic[1] c_silic[2] c_silic[3]
+#dump_modify     ${did} element Si
+#write_dump all cfg dump.siphsw.${did}.cfg mass type xs ys zs modify element Si
+#write_dump all custom dump.${dd}.file c_silic[1] c_silic[2] c_silic[3] modify element Si
+thermo  1000
+thermo_style    custom step temp lx ly lz v_p1 v_p2 v_p3 v_p4 ke pe press density
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 3.069 | 3.07 | 3.073 Mbytes
+   Step          Temp            Lx             Ly             Lz            v_p1           v_p2           v_p3           v_p4          KinEng         PotEng         Press         Density    
+         0   302.07928      53.526526      53.611642      53.551948      0.01566448     5.0630854      4.8987867      5.0039963      312.33544     -36593.55       49886.228      2.4278272    
+      1000   303.75263      53.597125      53.506639      53.569482      0.01534219     4.9564552      5.1191275      4.9969612      314.06561     -36595.965      50241.813      2.4285922    
+      2000   297.97917      53.526303      53.60686       53.557428      0.01556375     5.0563458      4.9015721      4.9943764      308.09612     -36598.022      49840.981      2.4278054    
+      3000   295.16537      53.57521       53.54065       53.563304      0.015455752    4.9768268      5.0426006      4.9953223      305.1868      -36595.761      50049.166      2.4283223    
+      4000   297.41832      53.559264      53.563144      53.560381      0.015509482    5.0026067      4.997324       4.9871115      307.51624     -36596.075      49956.807      2.4281577    
+      5000   294.38751      53.547312      53.584673      53.553049      0.015644251    5.0239779      4.9612731      5.0036139      304.38252     -36590.25       49962.883      2.4280563    
+      6000   301.79486      53.589028      53.515252      53.572343      0.01528961     4.9667672      5.1046576      4.9795192      312.04137     -36594.552      50169.813      2.4284385    
+      7000   304.43043      53.539888      53.591881      53.555346      0.015602017    5.0341416      4.9415417      5.0077413      314.76642     -36596.853      49944.749      2.4279622    
+      8000   299.33542      53.592113      53.522409      53.567175      0.015384596    4.9400497      5.0839232      4.9922187      309.49842     -36591.952      50053.972      2.4282082    
+      9000   299.36989      53.520344      53.609121      53.553373      0.015638294    5.0797649      4.9018379      5.0170868      309.53406     -36596.813      49995.632      2.4281572    
+     10000   295.67255      53.600804      53.513302      53.565174      0.015421368    4.9297079      5.0885551      4.9981778      305.7112      -36595.331      50054.802      2.4283184    
+Loop time of 4.50094 on 48 procs for 10000 steps with 8000 atoms
+
+Performance: 191.960 ns/day, 0.125 hours/ns, 2221.757 timesteps/s
+99.6% CPU use with 48 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.9666     | 3.3078     | 3.6261     |   7.6 | 73.49
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.4739     | 0.77416    | 1.1196     |  15.9 | 17.20
+Output  | 0.0006094  | 0.00061487 | 0.00064986 |   0.0 |  0.01
+Modify  | 0.32829    | 0.35897    | 0.42387    |   5.0 |  7.98
+Other   |            | 0.05945    |            |       |  1.32
+
+Nlocal:        166.667 ave         179 max         154 min
+Histogram: 3 0 4 6 8 10 8 4 3 2
+Nghost:        595.708 ave         606 max         587 min
+Histogram: 3 3 7 7 8 9 2 3 5 1
+Neighs:              0 ave           0 max           0 min
+Histogram: 48 0 0 0 0 0 0 0 0 0
+FullNghs:      4666.67 ave        5012 max        4312 min
+Histogram: 3 0 4 6 8 10 8 4 3 2
+
+Total # of neighbors = 224000
+Ave neighs/atom = 28
+Neighbor list builds = 0
+Dangerous builds = 0
+write_restart restart.rlx
+System init for write_restart ...
+write_dump all cfg dump.siphsw.${diid}.cfg mass type xs ys zs modify element Si
+write_dump all cfg dump.siphsw.100000.cfg mass type xs ys zs modify element Si
+#print "${diid} ${p1} ${p2} ${p3} ${p4} ${mylx} ${myly} ${mylz} ${tmpo} ${dens} ${ken} ${pen} ${enth}" append Si_phstr.txt screen no
+unfix def1
+unfix eqb
+uncompute tm
+uncompute prs
+####################################################################################
+next i
+jump in.phstr looping
+
+######################################
+# SIMULATION DONE
+print "All done"
+All done
+Total wall time: 0:00:46
