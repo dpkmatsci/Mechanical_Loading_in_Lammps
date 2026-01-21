@@ -1,5 +1,4 @@
-# Input file for uniaxial compressive loading of single crystal aluminum
-# Mark Tschopp, November 2010
+# Input file for uniaxial compressive loading of single crystal Silicon
 
 # --------- INITIALIZATION ----------------------------
 units 		metal
